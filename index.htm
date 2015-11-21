@@ -1,0 +1,377 @@
+
+<!-- saved from url=(0031)http://192.168.1.110/index.htm# -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <style>
+           #stranger  {
+                         background-color:#FFD39B;
+                         border:2px solid #FFBBFF;
+                         width:190px;
+                         padding-right:5px;
+                         height:600px;
+                      }
+           #stranger ul{ 
+                         margin-top:20px;
+                         list-style-type:none;
+                         padding-left:5px; 
+                       }
+           #stranger ul li{margin-top:10px;height:18px;}
+           #stranger ul li a{text-decoration:none;padding:2px;background-color:green;} 
+           #stranger ul li a.note_focus{background-color:red;} 
+           #stranger .note_count{
+                        float:right;
+                        background-color:red;
+                        text-align:center;
+                        border-radius:50%;
+                        width:20px;
+                        height:20px;
+                        color:green;
+                        font-size:12px;
+                     } 
+           #win{ 
+                         overflow-y:auto;
+                         width:800px;
+                         height:540px;
+                         background-color:#FFD39B;
+                         border:2px solid #FFBBFF;
+                }
+           #win ul{
+                         list-style-type:none;
+                         padding-left:10px; 
+                  }
+          #win ul li strong.stranger{color:red;}
+          #win ul li strong.you{color:blue;}
+          #win ul li strong + span{color:#8B8386;}
+          #win ul li p{color:#3D3D3D;margin:0px 0px 0px 10px;}
+          #input{
+               width:800px;
+               height:60px;
+               }
+        </style>
+        <script type="text/javascript" src="jquery-2.1.4.js"></script>
+        <script type="text/javascript">
+        /**** just for Stranger obj********/
+        function Msg(user, msg){
+            this.user = user;
+            this.msg = msg;
+            this.tm = new Date();//.Format("hh:mm:ss")
+            this.text=function(){
+                var cls  = "you";
+                if(user != "You"){ cls="Stranger";}
+                return "<li><strong class='"+cls+"'>"+this.user+"</strong><span>("+this.tm.Format("hh:mm:ss")+"):</span><p>"+this.msg+"</p></li>";
+            }
+            this.ele=function(){
+                return $(this.text());
+            }
+        }
+        function Stranger(handle, ele){
+            this.clientID = ''
+            this.host = "http://front2.omegle.com";
+            this.timer = '';
+            this.nEvent = 0;
+            this.nEventMax = 4;
+            this.win = '';
+            this.msgs = []
+            this.handle = handle;
+            this.ele = ele;
+            this.countNull = 0;
+        }
+        Stranger.prototype.init=function(){
+            for (var i=0; i < this.msgs.length; ++i){         
+               this.handle.text(this, this.msgs[i]);  
+            }
+        }
+        Stranger.prototype.text=function(user, msg){//操作页面
+            if(!this.win) this.win = $("#win"); 
+            msg = new Msg(user, msg);
+            this.msgs.push(msg);
+            this.handle.text(this, msg);
+        }
+        Stranger.prototype.send=function(msg){
+            if(!this.clientID || !msg) return false;
+
+            var self=this;
+            $.ajax({
+               type:'POST',
+               url:"curl.php?url="+this.host+"/send",
+               data:{"msg":msg, "id":this.clientID},
+               success:function (data){
+                  if(data == 'win') {//success 
+                     self.text("You", msg);
+                  } else {
+                     console.debug("send error:"+data);
+                     self.text("You", msg+"(Faild)");
+                  }
+               }, 
+               error:function(data){
+                     console.debug("send error!!!");
+                     self.text("You", msg+"(Faild)");
+               }
+            });
+
+            return true;
+        }
+        Stranger.prototype.proc=function(){
+          var self = this;
+          this.timer = setInterval(function(){self.event();}, 8000);
+        }
+        Stranger.prototype.procEvent=function(msg){
+            if(msg=="null") { 
+              this.countNull++;
+              if (this.countNull > 3){
+                 this.disconnect();
+              }
+              return;
+             } else {
+               this.countNull = 0;
+             }
+            var self = this;
+            $.each(eval(msg), function(i, a) {
+                switch (a[0]) {
+                case "waiting":
+                    break;
+                case "connected":
+                    break;
+                case "gotMessage":
+                    self.text("Stranger", a[1]);
+                    //self.message(a[1]);
+                    break;
+                case "strangerDisconnected":
+                    self.disconnect();
+                    break;
+                case "typing":
+                    break;
+                case "stoppedTyping":
+                    break;
+                case "recaptchaRequired":
+                    break;
+                case "recaptchaRejected":
+                    break;
+                case "count":
+                    break;
+                case "spyMessage":
+                    break;
+                case "spyTyping":
+                    break;
+                case "spyStoppedTyping":
+                    break;
+                case "spyDisconnected":
+                    break;
+                case "question":
+                    break;
+                case "serverMessage":
+                    break;
+                case "error":
+                    break;
+                case "commonLikes":
+                    break;
+                case "antinudeBanned":
+                    break;
+                case "statusInfo":
+                    break;
+                case "identDigests":
+                    break;
+                case "icecandidate":
+                    break;
+                case "rtccall":
+                    break;
+                case "rtcpeerdescription":
+                    break;
+                case "partnerCollege":
+                    break
+                }
+            });
+        }
+        Stranger.prototype.event=function(){
+            if(!this.clientID) return false;
+            if(this.nEvent > this.nEventMax){
+                  return false;
+            }
+            if(this.nEvnet < 0 )this.nEvent = 0;
+            this.nEvent++;
+            var self = this;
+
+            $.ajax({
+               type:'POST',
+               data:{"id":this.clientID},
+               url:"curl.php?url="+this.host+"/events",
+               //url:this.host+"/events",
+               //dataType:"jsonp",
+               success:function (data){
+                  if(data) { 
+                     self.procEvent(data);
+                  } else {
+                     console.debug("None");
+                  }
+                  self.nEvent--;
+               }, 
+               error:function(data){
+                     console.debug("Error"+data);
+                 self.nEvent--;
+               }
+            });
+         
+            return true;
+        }
+        Stranger.prototype.restart=function(){
+            if(this.clientID){
+                this.disconnect();
+            }
+            this.msgs = [];
+            return this.start();
+        }
+        Stranger.prototype.start=function(){
+             if (this.clientID) return true;
+            var self = this;
+            $.ajax({
+               type:'GET',
+               url:"curl.php?url="+this.host+"/start?rcs=1&firstevents=1&spid=&randid=NEMWN4ST&lang=zh",
+               success:function (data){
+                  if(data) { 
+                     self.clientID=data.replace(/^\"|\"$/g, ""); 
+                     self.handle.status(self, "online");
+                     self.proc();
+                  } else {
+                     self.handle.status(self, "offline");
+                  }
+               }, 
+               error:function(data){
+                     self.handle.status(self, "offline");
+               }
+            });
+        }
+        Stranger.prototype.disconnect=function(){
+           clearInterval(this.timer);
+           this.timer='';
+           this.clientID =""
+           this.handle.status(this, "offline");
+        }
+        Stranger.prototype.server=function(host){
+        }
+        Stranger.prototype.status=function(){
+        }
+        </script>
+        <script type="text/javascript">
+        function getCookie(name){
+        }
+        function setCookie(name, value){
+        }
+        Date.prototype.Format = function (fmt) { //author: meizz 
+            // (new Date()).Format("yyyy-MM-dd hh:mm:ss.S") ==> 2006-07-02 08:09:04.423 
+            // (new Date()).Format("yyyy-M-d h:m:s.S")      ==> 2006-7-2 8:9:4.18 
+            var o = {
+                "M+": this.getMonth() + 1, //月份 
+                "d+": this.getDate(), //日 
+                "h+": this.getHours(), //小时 
+                "m+": this.getMinutes(), //分 
+                "s+": this.getSeconds(), //秒 
+                "q+": Math.floor((this.getMonth() + 3) / 3), //季度 
+                "S": this.getMilliseconds() //毫秒 
+            };
+            if (/(y+)/.test(fmt)) fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+            for (var k in o)
+            if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+            return fmt;
+        }
+        function Manager(num){
+            this.curr = 0;
+            this.users = []
+            this.init=function (curr){
+                curr = curr || this.users[0]
+                if(curr){
+                    if(this.curr){
+                       this.curr.ele.find("a").css("background-color","");
+                    }
+                    $("#win ul").html("");
+                    this.curr = curr;
+                    curr.init();
+                    this.curr.ele.find("a").css("background-color","red");
+                 }
+            }
+            this.status=function (user, status){
+                 var ss = ['init','waitting', 'online','offline']
+                 user.ele.find("a.note_status").html(status);
+            }
+            this.create=function(){
+                var self = this;
+                var nid =this.users.length;
+                var namelink = $("<a href='#' title='"+nid+"' style='margin-right:5px;'>Stranger_"+nid+"  </a>");
+                var statuslink = $("<a href='#' title='"+nid+"' class='note_status'>init</a>");
+                var notecount = $("<div class='note_count'></div>")
+                namelink.click(function(){
+                    self.init(self.users[parseInt(this.title)]);
+                    notecount.html("");
+                })
+                statuslink.click(function(){
+                    if(this.innerText=="online" || this.innerText=="waiting"){ 
+                           alert("really??");
+                    } else {
+                        var curr = self.users[parseInt(this.title)];
+                         notecount.html("");
+                        curr.restart();
+                        self.status(curr, "waiting");
+                    }
+                });
+                var ele = $("<li></li>")
+                    .append($("<div style='float:left;margin-right:5px;'></div>").append(namelink).append(statuslink))
+                    .append(notecount);
+                this.users.push(new Stranger(this, ele));
+                $("#stranger ul").append(ele);
+            }
+            this.text=function(user, msg){
+                if (user === this.curr){
+                    $("#win ul").append(msg.text());
+                } else {
+                   var ele = user.ele.find("div.note_count");
+                   var ncount = ele.text() || 0;
+                   ele.html(parseInt(ncount)+1);
+                }
+            }
+            this.send=function(msg){
+               if (this.curr)this.curr.send(msg);
+            }
+        }
+         
+        function init(){
+            var manager = new Manager()
+            var input_text = $("#input_text");
+            manager.create();
+            manager.init();
+            document.onkeydown=function (e){
+              if (e.which==13){
+                 manager.send(input_text[0].value);
+                 input_text[0].value="";
+              }
+            }
+            $("#input_button").click(function(){
+               manager.send(input_text[0].value);
+               input_text[0].value="";
+            });
+            var ele = $("<a href='#'> next </a>");
+            ele.click(function(){
+               manager.create();
+            });
+            $("#stranger").append($(
+                "<div style='line-height:24px;width:100%;text-align:center'></div>"
+             ).append(ele));
+        }
+        </script>
+    </head>
+    <body onload="init()">
+      <div id="main"> 
+         <div id="stranger" style="float:left;">
+           <ul>
+           </ul>
+         </div>
+         <div style="float:left">
+           <div id="win">
+           <ul></ul>
+           </div>
+           <div id="input">
+            <input id="input_text" type="text" style="float:left;width:82%;height:100%">
+            <input id="input_button" type="button" style="float:left;width:18%;height:100%" value="Enter">
+           </div>
+         </div>
+      </div>
+    
+
+</body></html>
